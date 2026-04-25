@@ -1,0 +1,46 @@
+# ============================================================
+# Docker Compose — Microservicio de Notificaciones
+#
+# Servicios:
+#   - app:    API HTTP para disparar notificaciones en :8002
+#   - worker: Queue worker que procesa los jobs de email/notif
+#   - redis:  Compartido con el backend (o puede ser externo)
+#
+# En produccion este servicio se conecta al mismo Redis/PostgreSQL
+# que el backend. Aqui se levanta uno propio para desarrollo aislado.
+#
+# Uso:
+#   docker compose up --build
+# ============================================================
+
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "8002:8002"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: local
+
+  worker:
+    build:
+      context: .
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: local
+    command: ["php", "artisan", "queue:work", "--tries=3", "--sleep=3"]
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
