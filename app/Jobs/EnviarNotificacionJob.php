@@ -6,6 +6,7 @@ use App\Mail\ReservaConfirmadaMail;
 use App\Mail\ReservaCanceladaMail;
 use App\Mail\RecordatorioReservaMail;
 use App\Mail\ReservaReprogramadaMail;
+use App\Mail\ResenaRecibidaMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -31,6 +32,7 @@ class EnviarNotificacionJob implements ShouldQueue
             'reserva_cancelada'     => new ReservaCanceladaMail($this->datos),
             'recordatorio_reserva'  => new RecordatorioReservaMail($this->datos),
             'reserva_reprogramada'  => new ReservaReprogramadaMail($this->datos),
+            'resena_creada'         => new ResenaRecibidaMail($this->datos),
         };
 
         Mail::to($this->datos['email_usuario'])->send($mailable);
