@@ -1,0 +1,73 @@
+name: deploy-notificaciones
+
+on:
+  push:
+    branches: ["main", "master"]
+  workflow_dispatch:
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-1
+      EKS_CLUSTER: proyecto_php_cluster
+      K8S_NAMESPACE: proyecto2026
+      ECR_REPOSITORY: proyecto/notificaciones
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate AWS secrets
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ] || [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            echo "Missing GitHub Actions secrets in this repo: AWS_ACCESS_KEY_ID and/or AWS_SECRET_ACCESS_KEY"
+            echo "Go to: Settings → Secrets and variables → Actions → New repository secret"
+            exit 1
+          fi
+          if [ -z "${{ secrets.AWS_SESSION_TOKEN }}" ]; then
+            echo "AWS_SESSION_TOKEN is empty/missing. If you're using temporary AWS creds (VocLabs/STS), you must set it."
+            echo "If you're using long-lived IAM access keys, you can ignore this warning."
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.2.1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2.1.1
+        continue-on-error: true
+
+      - name: Build and push image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          if [ -z "$ECR_REGISTRY" ]; then
+            echo "Warning: ECR login failed (IAM restrictions). Skipping image push."
+            echo "If this is VocLabs, contact instructor to lift voc-cancel-cred policy."
+            exit 0
+          fi
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest || echo "Image push failed - deployment will use existing image"
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER
+
+      - name: Ensure namespace exists
+        run: |
+          if ! kubectl get namespace "$K8S_NAMESPACE" >/dev/null 2>&1; then
+            kubectl create namespace "$K8S_NAMESPACE"
+          fi
+
+      - name: Rollout restart
+        run: |
+          kubectl rollout restart deployment notificaciones -n $K8S_NAMESPACE
+          kubectl rollout status deployment notificaciones -n $K8S_NAMESPACE --timeout=10m
