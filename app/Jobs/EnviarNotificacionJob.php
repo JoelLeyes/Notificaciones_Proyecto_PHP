@@ -4,6 +4,8 @@ namespace App\Jobs;
 
 use App\Mail\ReservaConfirmadaMail;
 use App\Mail\ReservaCanceladaMail;
+use App\Mail\ReservaSolicitadaClienteMail;
+use App\Mail\ReservaSolicitadaProfesionalMail;
 use App\Mail\RecordatorioReservaMail;
 use App\Mail\ReservaReprogramadaMail;
 use App\Mail\ResenaRecibidaMail;
@@ -27,13 +29,23 @@ class EnviarNotificacionJob implements ShouldQueue
 
     public function handle(): void
     {
-        $mailable = match ($this->datos['tipo']) {
-            'reserva_confirmada'    => new ReservaConfirmadaMail($this->datos),
-            'reserva_cancelada'     => new ReservaCanceladaMail($this->datos),
-            'recordatorio_reserva'  => new RecordatorioReservaMail($this->datos),
-            'reserva_reprogramada'  => new ReservaReprogramadaMail($this->datos),
-            'resena_creada'         => new ResenaRecibidaMail($this->datos),
-        };
+        $mailableMap = [
+            'reserva_solicitada_cliente'     => ReservaSolicitadaClienteMail::class,
+            'reserva_solicitada_profesional'  => ReservaSolicitadaProfesionalMail::class,
+            'reserva_confirmada'              => ReservaConfirmadaMail::class,
+            'reserva_cancelada'               => ReservaCanceladaMail::class,
+            'recordatorio_reserva'            => RecordatorioReservaMail::class,
+            'reserva_reprogramada'            => ReservaReprogramadaMail::class,
+            'resena_creada'                   => ResenaRecibidaMail::class,
+        ];
+
+        $tipo = $this->datos['tipo'] ?? null;
+        if (!isset($mailableMap[$tipo])) {
+            throw new \InvalidArgumentException("Tipo de notificación no soportado: {$tipo}");
+        }
+
+        $mailableClass = $mailableMap[$tipo];
+        $mailable = new $mailableClass($this->datos);
 
         Mail::to($this->datos['email_usuario'])->send($mailable);
     }

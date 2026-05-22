@@ -27,7 +27,7 @@ class NotificacionController extends Controller
         }
 
         $validados = $request->validate([
-            'tipo'          => 'required|in:reserva_confirmada,reserva_cancelada,recordatorio_reserva,reserva_reprogramada,resena_creada',
+            'tipo'          => 'required|in:reserva_solicitada_cliente,reserva_solicitada_profesional,reserva_confirmada,reserva_cancelada,recordatorio_reserva,reserva_reprogramada,resena_creada',
             'email_usuario' => 'required|email',
             'nombre_usuario' => 'required|string',
             'datos'         => 'required|array',
