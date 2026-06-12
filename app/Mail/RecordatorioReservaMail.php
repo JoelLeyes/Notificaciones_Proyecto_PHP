@@ -20,7 +20,7 @@ class RecordatorioReservaMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Recordatorio de tu turno — Servicios Pro');
+        return new Envelope(subject: 'Falta una hora para tu turno — Servicios Pro');
     }
 
     public function content(): Content
