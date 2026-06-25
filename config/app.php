@@ -84,7 +84,7 @@ return [
 
     'timezone' => 'UTC',
 
-    'token_servicio' => env('APP_TOKEN_SERVICIO', env('TOKEN_SERVICIO', '')),
+    'token_servicio' => env('NOTIF_SERVICE_TOKEN', env('APP_TOKEN_SERVICIO', env('TOKEN_SERVICIO', ''))),
 
     /*
     |--------------------------------------------------------------------------
